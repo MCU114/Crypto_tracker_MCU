@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getSupabaseServerClient } from '@/src/lib/supabase/server'
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -19,20 +19,28 @@ const client = new OpenAI({
 const SYSTEM_PROMPT =
   'You are a crypto and wealth management assistant. Help users understand crypto markets, prices, and investment strategies. Be concise and professional.'
 
-function isAuthenticatedRequest(req: Request): boolean {
-  const sessionCookie = cookies().get('cryptopedia_session')?.value
-  if (sessionCookie) return true
-
+async function isAuthenticatedRequest(req: Request): Promise<boolean> {
   const authHeader = req.headers.get('authorization')
   if (!authHeader) return false
 
   const [scheme, token] = authHeader.split(' ')
-  return scheme.toLowerCase() === 'bearer' && Boolean(token?.trim())
+  if (scheme.toLowerCase() !== 'bearer' || !token?.trim()) {
+    return false
+  }
+
+  const supabase = getSupabaseServerClient()
+  const { data, error } = await supabase.auth.getUser(token.trim())
+
+  if (error) {
+    return false
+  }
+
+  return Boolean(data.user)
 }
 
 export async function POST(req: Request) {
   try {
-    if (!isAuthenticatedRequest(req)) {
+    if (!(await isAuthenticatedRequest(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

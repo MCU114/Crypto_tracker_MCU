@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { getSupabaseClient } from '@/src/lib/supabase/client';
 
 interface AuthSheetProps {
   open: boolean;
@@ -14,6 +15,7 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -27,22 +29,63 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
   }, [open]);
 
   const handleGoogleSignIn = () => {
-    // Temporarily route users to a Coming Soon page instead of the API endpoint
-    // to avoid 404 while OAuth integration is pending.
     window.location.href = '/auth/google-coming-soon';
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Auth backend endpoints are not wired for this demo.
-    // Redirect users to the Coming Soon auth page instead of showing a network error.
-    onClose();
-    window.location.href = '/auth';
+    setError(null);
+    setSuccessMessage(null);
+
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const supabase = getSupabaseClient();
+
+      if (mode === 'signup') {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        });
+
+        if (signUpError) {
+          setError(signUpError.message);
+          return;
+        }
+
+        setSuccessMessage(
+          'Account created. Please check your email to confirm your account.'
+        );
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (signInError) {
+          setError(signInError.message);
+          return;
+        }
+
+        onClose();
+      }
+    } catch (submitError) {
+      console.error('Auth submit error:', submitError);
+      setError('Unable to complete authentication right now.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleMode = () => {
     setMode(prev => (prev === 'login' ? 'signup' : 'login'));
     setError(null);
+    setSuccessMessage(null);
   };
 
   if (typeof document === 'undefined') return null;
@@ -112,6 +155,9 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
             </div>
 
             {error && <div className="text-sm text-red-600">{error}</div>}
+            {successMessage && (
+              <div className="text-sm text-green-700">{successMessage}</div>
+            )}
 
             <button
               type="submit"

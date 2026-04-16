@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, KeyboardEvent, useEffect, useState } from 'react'
+import { getSupabaseClient } from '@/src/lib/supabase/client'
 
 type ChatRole = 'user' | 'assistant'
 
@@ -21,11 +22,24 @@ export default function ChatBot() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    const hasSessionCookie = document.cookie
-      .split(';')
-      .some((cookie) => cookie.trim().startsWith('cryptopedia_session='))
+    const supabase = getSupabaseClient()
 
-    setIsAuthenticated(hasSessionCookie)
+    const syncSessionState = async () => {
+      const { data } = await supabase.auth.getSession()
+      setIsAuthenticated(Boolean(data.session))
+    }
+
+    void syncSessionState()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session))
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   if (isAuthenticated !== true) {
@@ -46,7 +60,10 @@ export default function ChatBot() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${(await getSupabaseClient().auth.getSession()).data.session?.access_token ?? ''}`,
+        },
         body: JSON.stringify({ messages: nextMessages }),
       })
 
