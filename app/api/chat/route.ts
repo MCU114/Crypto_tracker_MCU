@@ -11,13 +11,15 @@ type ChatRequestBody = {
   messages?: ChatMessage[]
 }
 
-const client = new OpenAI({
-  apiKey: process.env.XAI_API_KEY,
-  baseURL: 'https://api.x.ai/v1',
-})
-
 const SYSTEM_PROMPT =
   'You are a crypto and wealth management assistant. Help users understand crypto markets, prices, and investment strategies. Be concise and professional.'
+
+function getXaiClient() {
+  return new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: 'https://api.x.ai/v1',
+  })
+}
 
 async function isAuthenticatedRequest(req: Request): Promise<boolean> {
   const authHeader = req.headers.get('authorization')
@@ -48,6 +50,7 @@ export async function POST(req: Request) {
       throw new Error('XAI_API_KEY is not configured')
     }
 
+    const client = getXaiClient()
     const body = (await req.json()) as ChatRequestBody
     const messages = Array.isArray(body.messages) ? body.messages : []
 
