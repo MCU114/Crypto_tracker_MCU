@@ -10,6 +10,10 @@ interface AuthSheetProps {
 }
 
 export default function AuthSheet({ open, onClose }: AuthSheetProps) {
+  const canUseSupabase =
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,13 +46,18 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
       return;
     }
 
+    if (!canUseSupabase) {
+      setError('Supabase environment variables are missing. Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const supabase = getSupabaseClient();
 
       if (mode === 'signup') {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
         });
@@ -58,17 +67,26 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
           return;
         }
 
-        setSuccessMessage(
-          'Account created. Please check your email to confirm your account.'
-        );
+        if (data.session) {
+          setSuccessMessage('Account created and signed in successfully.');
+          onClose();
+          return;
+        }
+
+        setSuccessMessage('Account created. Please check your email and click the confirmation link before logging in.');
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
 
         if (signInError) {
           setError(signInError.message);
+          return;
+        }
+
+        if (!data.session) {
+          setError('Login did not return a session. If email confirmation is enabled, confirm your email first.');
           return;
         }
 
@@ -161,12 +179,20 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !canUseSupabase}
               className="w-full py-3 rounded-lg font-medium disabled:opacity-50 transition-colors brand-button justify-center"
             >
               {mode === 'login' ? 'Log in' : 'Create account'}
             </button>
           </form>
+
+          {!canUseSupabase && (
+            <p className="mt-3 text-xs text-red-600">
+              Supabase config is missing in this deployment. Add
+              {' '}
+              NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
+            </p>
+          )}
 
           <div className="text-center mt-6">
             <button onClick={toggleMode} className="brand-icon hover:opacity-90 text-sm">
