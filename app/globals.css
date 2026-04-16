@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .badge-soft {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .pill-tab {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border;
+  }
+
+  .card-surface {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow;
+  }
+  /* Brand frame used for page hero panels (blue rounded background) */
+  .brand-frame {
+    /* Slightly tighter radius on mobile, original radius preserved on desktop */
+    @apply rounded-2xl lg:rounded-3xl p-6;
+    background-color: var(--brand-color);
+  }
+
+  /* Reusable inner white card used inside brand frames */
+  .brand-inner {
+    @apply rounded-2xl bg-white shadow-sm p-6;
+  }
+
+  /* Brand icon color for icons/text that should match the brand icon tone */
+  .brand-icon {
+    color: var(--brand-icon);
+  }
+
+  /* Brand button used for primary actions (signup / login etc) */
+  .brand-button {
+    @apply inline-flex items-center;
+    background-color: var(--brand-color);
+    color: white;
+  }
+
+  .brand-button:hover {
+    opacity: 0.95;
+  }
+
+  .brand-button:focus {
+    box-shadow: 0 0 0 4px rgba(40,84,165,0.12);
+  }
+
+  /* Small square/rounded logo badge using brand color */
+  .brand-logo {
+    background-color: var(--brand-color);
+    color: white;
+  }
+}
+
+:root {
+  /* Brand panel color — change this to update all page panels */
+  /* New frame color requested: Hex #2854A5 (RGB: 40,84,165) */
+  --brand-color: #2854A5;
+  /* Brand icon tone — use the same colour as the frame for icons/buttons */
+  --brand-icon: var(--brand-color);
+}
