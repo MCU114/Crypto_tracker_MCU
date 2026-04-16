@@ -85,11 +85,18 @@ export default function AuthSheet({ open, onClose }: AuthSheetProps) {
       }
     } catch (submitError) {
       console.error('Auth submit error:', submitError);
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : 'Unable to complete authentication right now.'
-      );
+      if (
+        submitError instanceof Error &&
+        submitError.message.toLowerCase().includes('environment variables')
+      ) {
+        setError('Unable to connect to authentication service right now.');
+      } else {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : 'Unable to complete authentication right now.'
+        );
+      }
     } finally {
       setLoading(false);
     }
