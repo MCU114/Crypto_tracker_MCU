@@ -1,7 +1,6 @@
 'use client'
 
-import { FormEvent, KeyboardEvent, useEffect, useState } from 'react'
-import { getSupabaseClient } from '@/src/lib/supabase/client'
+import { FormEvent, KeyboardEvent, useState } from 'react'
 
 type ChatRole = 'user' | 'assistant'
 
@@ -15,52 +14,10 @@ type ChatApiResponse = {
 }
 
 export default function ChatBot() {
-  const canUseSupabase =
-    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    if (!canUseSupabase) {
-      setIsAuthenticated(false)
-      return
-    }
-
-    let supabase
-    try {
-      supabase = getSupabaseClient()
-    } catch (error) {
-      console.error('Supabase client init error:', error)
-      setIsAuthenticated(false)
-      return
-    }
-
-    const syncSessionState = async () => {
-      const { data } = await supabase.auth.getSession()
-      setIsAuthenticated(Boolean(data.session))
-    }
-
-    void syncSessionState()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(Boolean(session))
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [canUseSupabase])
-
-  if (isAuthenticated !== true) {
-    return null
-  }
 
   const sendMessage = async () => {
     const trimmed = input.trim()
@@ -74,20 +31,9 @@ export default function ChatBot() {
     setIsLoading(true)
 
     try {
-      const supabase = getSupabaseClient()
-      const session = await supabase.auth.getSession()
-      const accessToken = session.data.session?.access_token
-
-      if (!accessToken) {
-        throw new Error('No authenticated session token available')
-      }
-
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: nextMessages }),
       })
 

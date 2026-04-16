@@ -1,6 +1,5 @@
 import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
-import { getSupabaseServerClient } from '@/src/lib/supabase/server'
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -21,31 +20,8 @@ function getXaiClient() {
   })
 }
 
-async function isAuthenticatedRequest(req: Request): Promise<boolean> {
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader) return false
-
-  const [scheme, token] = authHeader.split(' ')
-  if (scheme.toLowerCase() !== 'bearer' || !token?.trim()) {
-    return false
-  }
-
-  const supabase = getSupabaseServerClient()
-  const { data, error } = await supabase.auth.getUser(token.trim())
-
-  if (error) {
-    return false
-  }
-
-  return Boolean(data.user)
-}
-
 export async function POST(req: Request) {
   try {
-    if (!(await isAuthenticatedRequest(req))) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     if (!process.env.XAI_API_KEY) {
       throw new Error('XAI_API_KEY is not configured')
     }
