@@ -15,6 +15,10 @@ type ChatApiResponse = {
 }
 
 export default function ChatBot() {
+  const canUseSupabase =
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
@@ -22,7 +26,19 @@ export default function ChatBot() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    const supabase = getSupabaseClient()
+    if (!canUseSupabase) {
+      setIsAuthenticated(false)
+      return
+    }
+
+    let supabase
+    try {
+      supabase = getSupabaseClient()
+    } catch (error) {
+      console.error('Supabase client init error:', error)
+      setIsAuthenticated(false)
+      return
+    }
 
     const syncSessionState = async () => {
       const { data } = await supabase.auth.getSession()
@@ -40,7 +56,7 @@ export default function ChatBot() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [canUseSupabase])
 
   if (isAuthenticated !== true) {
     return null
@@ -58,11 +74,19 @@ export default function ChatBot() {
     setIsLoading(true)
 
     try {
+      const supabase = getSupabaseClient()
+      const session = await supabase.auth.getSession()
+      const accessToken = session.data.session?.access_token
+
+      if (!accessToken) {
+        throw new Error('No authenticated session token available')
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${(await getSupabaseClient().auth.getSession()).data.session?.access_token ?? ''}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ messages: nextMessages }),
       })
